@@ -1,0 +1,6 @@
+pyaudio
+streamlit
+speech_recognition
+gtts
+openai
+requests
