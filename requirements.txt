@@ -3,4 +3,3 @@ SpeechRecognition
 gtts
 openai
 requests
-PyAudio
