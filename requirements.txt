@@ -3,5 +3,4 @@ SpeechRecognition
 gtts
 openai
 requests
-portaudio19-dev
-python3-all-dev
+PyAudio
