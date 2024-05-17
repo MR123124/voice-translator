@@ -3,4 +3,4 @@ speechrecognition
 googletrans
 gtts
 pydub
-PyAudio
+pygame
