@@ -1,5 +1,5 @@
 streamlit
-SpeechRecognition
+speechrecognition
+googletrans
 gtts
-openai
-requests
+pydub
