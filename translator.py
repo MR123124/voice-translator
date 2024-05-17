@@ -1,68 +1,68 @@
 import streamlit as st
 import speech_recognition as sr
+from googletrans import Translator
 from gtts import gTTS
 import os
-import openai
-import requests
+from pydub import AudioSegment
+from pydub.playback import play
 
-openai.api_key = "sk-proj-BCV7li7lopfwtP6mZzoQT3BlbkFJvnFfl2loH52M0vEOy9rq"
-# Initialize the speech recognizer
-recognizer = sr.Recognizer()
+st.title("Arabic to English Voice Translator")
 
-# Function to recognize speech and translate to text
-def translate_speech_to_text():
-    with sr.Microphone() as source:
-        st.write("Say something in Arabic...")
+def recognize_speech_from_mic(recognizer, microphone):
+    """Transcribe speech from recorded from `microphone`."""
+    with microphone as source:
+        st.info("Adjusting for ambient noise, please wait...")
+        recognizer.adjust_for_ambient_noise(source)
+        st.info("Listening...")
         audio = recognizer.listen(source)
 
+    response = {
+        "success": True,
+        "error": None,
+        "transcription": None
+    }
+
     try:
-        st.write("Translating...")
-        text = recognizer.recognize_google(audio, language='ar')
-        return text
+        response["transcription"] = recognizer.recognize_google(audio, language="ar-SA")
+    except sr.RequestError:
+        response["success"] = False
+        response["error"] = "API unavailable"
     except sr.UnknownValueError:
-        st.write("Could not understand audio")
-        return ""
-    except sr.RequestError as e:
-        st.write(f"Could not request results; {e}")
-        return ""
+        response["error"] = "Unable to recognize speech"
 
-# Function to translate text to English
-def translate_text_to_english(text):
-    response = openai.ChatCompletion.create(  # Using the correct method to create a chat completion
-        model="gpt-3.5-turbo-0125",
-        messages=[
-            {"role": "system", "content": "Translate next sentence in English. The output formate should be string."},
-            {"role": "user", "content": text}
-        ]
-    )
-    
-    return response['choices'][0]['message']['content']
+    return response
 
-# Streamlit UI
-st.title("Arabic to English Speech Translator")
+def translate_text(text, src='ar', dest='en'):
+    """Translate text from source language to destination language."""
+    translator = Translator()
+    translation = translator.translate(text, src=src, dest=dest)
+    return translation.text
 
-# Initialize session state dictionary
-if 'arabic_text' not in st.session_state:
-    st.session_state['arabic_text'] = ""
+def text_to_speech(text, lang='en'):
+    """Convert text to speech."""
+    tts = gTTS(text=text, lang=lang)
+    tts.save("translated_audio.mp3")
+    return "translated_audio.mp3"
 
-if st.button("Recording Arabic"):
-    st.session_state['arabic_text'] = translate_speech_to_text()
-    st.write(f"Arabic Text: {st.session_state['arabic_text']}")
-    st.write("Click 'Translate' to translate to English.")
+recognizer = sr.Recognizer()
+microphone = sr.Microphone()
 
 if st.button("Translate"):
-    if st.session_state['arabic_text']:
-        st.session_state.english_text = translate_text_to_english(st.session_state['arabic_text'])
-        st.write({st.session_state.english_text})
-        st.write("Click 'Speak Translation' to hear the translation.")
-    else:
-        st.write("Please record Arabic speech first.")
+    st.info("Speak now...")
 
-if st.button("Speak Translation"):
-    if st.session_state.english_text:
-        tts = gTTS(text=st.session_state.english_text, lang='en')
-        tts.save("translation.mp3")
-        os.system("start translation.mp3")
-    else:
-        st.write("Please translate the text first.")
+    speech = recognize_speech_from_mic(recognizer, microphone)
 
+    if speech["transcription"]:
+        st.success("Transcription: " + speech["transcription"])
+        translation = translate_text(speech["transcription"])
+        st.success("Translation: " + translation)
+
+        audio_file = text_to_speech(translation)
+
+        audio = AudioSegment.from_mp3(audio_file)
+        st.audio(audio_file, format="audio/mp3")
+
+        play(audio)
+        os.remove(audio_file)
+    else:
+        st.error(speech["error"])
